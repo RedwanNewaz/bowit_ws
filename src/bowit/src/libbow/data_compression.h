@@ -1,5 +1,4 @@
-#pragma once 
-
+#pragma once
 #include <algorithm>
 #include <iterator>
 #include <map>
@@ -7,18 +6,16 @@
 
 class DataCompression
 {
-    using TOD_VEC = std::vector<std::vector<double>>;
 public:
+    using TOD_VEC = std::vector<std::vector<double>>;
     static TOD_VEC compress(const TOD_VEC& data, size_t maxSamples);
 private:
-
+    static TOD_VEC shannonEntropy(const TOD_VEC& data, int subsetSize);
 };
 
-
-template <typename T>
-inline std::vector<T> shannonEntropy(const std::vector<T>& data, int subsetSize) {
+DataCompression::TOD_VEC DataCompression::shannonEntropy(const TOD_VEC& data, int subsetSize) {
     // Count occurrences of each element
-    std::map<T, int> counts;
+    std::map<std::vector<double>, int> counts;
     for (const auto& element : data) {
         counts[element]++;
     }
@@ -35,13 +32,13 @@ inline std::vector<T> shannonEntropy(const std::vector<T>& data, int subsetSize)
 
     // Initialize best entropy and subset
     double bestEntropy = -std::numeric_limits<double>::max();
-    std::vector<T> bestSubset;
+    TOD_VEC bestSubset;
 
     // Try all possible subsets of the desired size
     for (int start = 0; start <= data.size() - subsetSize; ++start) {
         // Calculate entropy of the current subset
         double currentEntropy = totalEntropy;
-        std::map<T, int> currentCounts(counts);
+        std::map<std::vector<double>, int> currentCounts(counts);
         for (int i = 0; i < subsetSize; ++i) {
             const auto& element = data[start + i];
             currentCounts[element]--;
@@ -53,7 +50,7 @@ inline std::vector<T> shannonEntropy(const std::vector<T>& data, int subsetSize)
         // Update best entropy and subset if necessary
         if (currentEntropy > bestEntropy) {
             bestEntropy = currentEntropy;
-            bestSubset = std::vector<T>(data.begin() + start, data.begin() + start + subsetSize);
+            bestSubset = TOD_VEC(data.begin() + start, data.begin() + start + subsetSize);
         }
     }
 
