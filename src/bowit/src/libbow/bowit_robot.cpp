@@ -7,7 +7,7 @@ BowitRobot::BowitRobot(double px, double py, MotionModelPtr mmodel, std::shared_
     _x.resize(mmodel->stateDim());
     _x << px, py, -M_PI_2, 0.0, 0.0;
     std::copy(controlRange.begin(), controlRange.end(), std::back_inserter(controlRange_));
-    gp_ = std::make_shared<GGP_t>(1, 1);
+    // gp_ = std::make_shared<GGP_t>(1, 1);
     collisionChecker_ = std::make_shared<CollisionChecker>(std::vector<double>{0.5,0.5,0.1});
     Eigen::Vector2d u(0, 0);
     setNormalizedControl(u);
@@ -74,32 +74,32 @@ size_t BowitRobot::trainSize() const
 
 void BowitRobot::updateGP()
 {
-    std::lock_guard<std::mutex> lk(mu);
+    // std::lock_guard<std::mutex> lk(mu);
 
     
-    std::vector<std::vector<double>> trainData; 
-    for(auto& sample: uniqueSamples_)
-    {
-        auto samples = field_->getSub(sample.first);
-        samples.push_back(sample.second);
-        trainData.push_back(samples);
-    }
+    // std::vector<std::vector<double>> trainData; 
+    // for(auto& sample: uniqueSamples_)
+    // {
+    //     auto samples = field_->getSub(sample.first);
+    //     samples.push_back(sample.second);
+    //     trainData.push_back(samples);
+    // }
 
  
-    // gp_ = std::make_shared<GGP_t>(1, 1);
+    // // gp_ = std::make_shared<GGP_t>(1, 1);
 
     
-    trainData = DataCompression::compress(trainData, 500);
+    // trainData = DataCompression::compress(trainData, 500);
 
-    std::vector<Eigen::VectorXd> samples(trainData.size()), observations(trainData.size());    
-    for(int i = 0; i <trainData.size(); ++i)
-    {
-        int cellIndex = field_->getIndex(trainData[i][0], trainData[i][1]);
-        samples[i] = tools::make_vector(cellIndex); 
-        observations[i] = tools::make_vector(trainData[i][2]);
-    }
+    // std::vector<Eigen::VectorXd> samples(trainData.size()), observations(trainData.size());    
+    // for(int i = 0; i <trainData.size(); ++i)
+    // {
+    //     int cellIndex = field_->getIndex(trainData[i][0], trainData[i][1]);
+    //     samples[i] = tools::make_vector(cellIndex); 
+    //     observations[i] = tools::make_vector(trainData[i][2]);
+    // }
 
-    gp_->compute(samples, observations);
+    // gp_->compute(samples, observations);
 }
 
 std::vector<std::string> BowitRobot::check_comm_range(double range) const 
@@ -136,13 +136,6 @@ void BowitRobot::update_visited_map(double x, double y, double z)
     // update visited map 
     int cellIndex = field_->getIndex(x, y);
     uniqueSamples_[cellIndex] = z; 
-    // gp_->add_sample(tools::make_vector(cellIndex), tools::make_vector(z));
-    // if (observed_data_.find(cellIndex) == observed_data_.end())
-    // {
-    //     gp_->add_sample(tools::make_vector(cellIndex), tools::make_vector(z));
-        
-    // }
-
     auto frontiers = compute_frontier(std::vector<double>{_x(0), _x(1), _x(2)});
     for(auto index :frontiers)
     {
@@ -184,22 +177,24 @@ Eigen::VectorXd  BowitRobot::operator()(const Eigen::VectorXd& act) const
     Eigen::Vector2d u = tfControl(act);
     
     //satisfibility check  0: infeasible 1: feasible
+    res(1) = 1;
     auto xx = mmodel_->get(_x, u, mmodel_->dt());
     bool inside = field_->isValidCoord(xx(0), xx(1));
     
-    int N = otherRobots_.size(); 
-    Eigen::MatrixXd others(N, mmodel_->stateDim());
-    int rid = 0; 
-    for(auto& other: otherRobots_)
-        others.row(rid++) = other.second; 
-    
-    auto collision = collisionChecker_->checkTrajCollision(xx, others, mmodel_->getPtr());
+    int N = otherRobots_.size();
+    if(N > 0) 
+    {
+        Eigen::MatrixXd others(N, mmodel_->stateDim());
+        int rid = 0; 
+        for(auto& other: otherRobots_)
+            others.row(rid++) = other.second; 
+        
+        auto collision = collisionChecker_->checkTrajCollision(xx, others, mmodel_->getPtr());    
+        res(1) = inside && !collision; 
+    }
 
-    
-    res(0) = 0;
-    res(1) = inside && !collision; 
     auto traj = mmodel_->pred(_x, u); 
-    res(0) = evaluateTrajectory(traj);    
+    res(0) = evaluateTrajectoryV2(traj);    
     return res; 
     
 }
@@ -241,6 +236,26 @@ std::vector<int> BowitRobot::compute_frontier(const std::vector<double>& self) c
     return results;
 }
 
+double BowitRobot::evaluateTrajectoryV2(const Eigen::MatrixXd& traj) const
+{
+    int unseen = 0; 
+    for(int i = 0; i < traj.rows(); ++i)
+    {
+        auto tx = traj.row(i); 
+        if(!field_->isValidCoord(tx(0), tx(1)))
+            continue;
+        
+        int cellIndex = field_->getIndex(tx(0), tx(1));
+
+        if(observed_data_.find(cellIndex) == observed_data_.end())
+        {
+            unseen += 1;
+        }
+
+    }
+    return unseen;
+
+}
 
 double BowitRobot::evaluateTrajectory(const Eigen::MatrixXd& traj) const
 {

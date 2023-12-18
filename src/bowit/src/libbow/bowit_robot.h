@@ -54,6 +54,7 @@ protected:
   Eigen::Vector2d tfControl(const Eigen::VectorXd& act)const;
   std::vector<int> compute_frontier(const std::vector<double>& self) const; 
   double evaluateTrajectory(const Eigen::MatrixXd& traj) const;
+  double evaluateTrajectoryV2(const Eigen::MatrixXd& traj) const;
   bool detectCollision(const Eigen::VectorXd& xx) const; 
   Eigen::MatrixXd getGroundTruth() const; 
 
