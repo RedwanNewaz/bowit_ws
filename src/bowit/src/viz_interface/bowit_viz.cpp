@@ -17,6 +17,7 @@ BowitViz::BowitViz():Node("bowitViz")
     pub_frontier_ = this->create_publisher<visualization_msgs::msg::Marker>("/bowit_frontiers", 10);
     pub_trajectory_ = this->create_publisher<visualization_msgs::msg::Marker>("/bowit_trajectories", 10);
     pclPub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/bowit_local_sensing", 10);
+    crPub_ = this->create_publisher<std_msgs::msg::Float64>("/bowit_coverage_rate", 10);
 
     occPub_= this->create_publisher<nav_msgs::msg::OccupancyGrid>("/map", 10);
     
@@ -38,11 +39,22 @@ BowitViz::BowitViz():Node("bowitViz")
     const double predTime = 1.5;
     mmodel_ = std::make_shared<MotionModel>(state_dim, dt, predTime);
     collisionChecker_ = std::make_shared<CollisionChecker>(std::vector<double>{0.5,0.5,0.1});
-
-   
-
+    timer_ = this->create_wall_timer(std::chrono::milliseconds(1000), 
+        std::bind(&BowitViz::timer_callback, this));
     
 }
+
+void BowitViz::timer_callback()
+{
+    auto total_size = occGridMsg_.data.size(); 
+    visitCounter_ = std::count(occGridMsg_.data.begin(), occGridMsg_.data.end(), exploredPixel); 
+    double coverageRate = (double) visitCounter_ / (double) total_size; 
+    std_msgs::msg::Float64 msg; 
+    msg.data = coverageRate; 
+    crPub_->publish(msg);
+
+}
+
 bool BowitViz::updateGridMap(double x, double y)
 {
     int row = y / resolution_;

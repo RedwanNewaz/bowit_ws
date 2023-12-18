@@ -57,6 +57,7 @@ protected:
   double evaluateTrajectoryV2(const Eigen::MatrixXd& traj) const;
   bool detectCollision(const Eigen::VectorXd& xx) const; 
   Eigen::MatrixXd getGroundTruth() const; 
+  
 
 };
 

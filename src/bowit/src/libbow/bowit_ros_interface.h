@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <std_msgs/msg/float64.hpp>
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
@@ -44,6 +45,8 @@ protected:
 
   void timer_callback();
 
+  void mse_timer_callback();
+
   Eigen::VectorXd toState(const nav_msgs::msg::Odometry& odom);
 
   void publish_state();
@@ -64,11 +67,12 @@ private:
         experimental::constraint_modelfun<Constrained_GP_t>>
                 opt_;
   std::shared_ptr<BowitRobot> robot_; 
-  rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::TimerBase::SharedPtr timer_, mse_timer_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr publisher_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr state_sub_;
   rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr pub_sensor_data_;
   rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr sub_sensor_data_;
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr msePub_;
 
   std::unordered_map<std::string, TIME_POINT> comm_tracker_;
 

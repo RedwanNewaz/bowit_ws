@@ -48,6 +48,7 @@ Eigen::MatrixXd BowitRobot::getGroundTruth() const
 
 double BowitRobot::loss() const
 {
+    std::lock_guard<std::mutex> lock(mu);
     // Calculate MSE
     Eigen::MatrixXd gt_field = getGroundTruth();
     size_t n(gt_field.rows()), m(gt_field.cols());
@@ -77,29 +78,36 @@ void BowitRobot::updateGP()
     // std::lock_guard<std::mutex> lk(mu);
 
     
-    // std::vector<std::vector<double>> trainData; 
-    // for(auto& sample: uniqueSamples_)
-    // {
-    //     auto samples = field_->getSub(sample.first);
-    //     samples.push_back(sample.second);
-    //     trainData.push_back(samples);
-    // }
-
- 
-    // // gp_ = std::make_shared<GGP_t>(1, 1);
-
+    std::vector<std::vector<double>> trainData; 
+    for(auto& sample: uniqueSamples_)
+    {
+        auto samples = field_->getSub(sample.first);
+        samples.push_back(sample.second);
+        trainData.push_back(samples);
+    }
+    trainData = DataCompression::compress(trainData, 1000);
     
-    // trainData = DataCompression::compress(trainData, 500);
+    std::vector<Eigen::VectorXd> samples(trainData.size()), observations(trainData.size());    
+    for(int i = 0; i <trainData.size(); ++i)
+    {
+        int cellIndex = field_->getIndex(trainData[i][0], trainData[i][1]);
+        samples[i] = tools::make_vector(cellIndex); 
+        observations[i] = tools::make_vector(trainData[i][2]);
+    }
+    
+      // Use std::async to launch a task asynchronously
+    std::future<void> result = std::async(std::launch::async, [&]() {
+        // Lock the mutex to perform thread-safe operations
+        std::lock_guard<std::mutex> lock(mu);
 
-    // std::vector<Eigen::VectorXd> samples(trainData.size()), observations(trainData.size());    
-    // for(int i = 0; i <trainData.size(); ++i)
-    // {
-    //     int cellIndex = field_->getIndex(trainData[i][0], trainData[i][1]);
-    //     samples[i] = tools::make_vector(cellIndex); 
-    //     observations[i] = tools::make_vector(trainData[i][2]);
-    // }
+        // update gp time-consuming task
+        gp_ = std::make_shared<GGP_t>(1, 1);    
+        gp_->compute(samples, observations);
 
-    // gp_->compute(samples, observations);
+        // Mutex is automatically released when lock_guard goes out of scope
+    });
+    result.wait();
+  
 }
 
 std::vector<std::string> BowitRobot::check_comm_range(double range) const 

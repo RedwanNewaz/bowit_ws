@@ -1,0 +1,23 @@
+rqt_plot()
+{
+top=0.957,
+bottom=0.082,
+left=0.082,
+right=0.953,
+hspace=0.2,
+wspace=0.2
+
+top=0.954,
+bottom=0.086,
+left=0.068,
+right=0.953,
+hspace=0.2,
+wspace=0.2
+
+
+    ros2 run rqt_plot rqt_plot /bowit_coverage_rate/data
+    ros2 run rqt_plot rqt_plot /bowit_mse/robot1/data /bowit_mse/robot2/data /bowit_mse/robot3/data /bowit_mse/robot4/data
+}
+
+
+ros2 run rviz2 rviz2 -d src/bowit/config/bowit.rviz

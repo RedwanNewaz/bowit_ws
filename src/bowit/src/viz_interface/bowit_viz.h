@@ -1,8 +1,11 @@
 #pragma once 
+
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <visualization_msgs/msg/marker.hpp>
+#include <std_msgs/msg/float64.hpp>
+
 #include <unordered_map> 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
@@ -34,15 +37,18 @@ private:
     double resolution_; 
     const int unexploredPixel = 50;
     const int exploredPixel = 0;
+    size_t visitCounter_; 
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr state_sub_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_state_, pub_frontier_, pub_trajectory_;
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr occPub_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pclPub_;
+    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr crPub_;
     nav_msgs::msg::OccupancyGrid occGridMsg_;
     std::unordered_map<std::string, geometry_msgs::msg::Pose> otherRobots_;
     std::unordered_map<std::string, geometry_msgs::msg::Twist> otherRobotsVel_;
     MotionModelPtr mmodel_;
     std::shared_ptr<CollisionChecker> collisionChecker_;
+    rclcpp::TimerBase::SharedPtr timer_;
 protected:
     /// @brief Given a coordinate, update the occupancy grid 
     /// @param x x coord
@@ -72,6 +78,8 @@ protected:
     void compute_trajectory(nav_msgs::msg::Odometry::SharedPtr msg);
 
     void scalarToHeatmapColor(double scalar, cv::Vec3b& rgbColor);
+
+    void timer_callback();
     
 };
 

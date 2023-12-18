@@ -42,6 +42,8 @@ set(LIBBOW_SRC_FILE
   src/libbow/hypermap.h
   src/libbow/motion_model.h
   src/libbow/rapidcsv.h
+  src/libbow/data_compression.cpp
+  src/libbow/data_compression.h
 )
 
 add_executable(bowit_node 

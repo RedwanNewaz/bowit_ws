@@ -19,9 +19,7 @@ BowitROSInteface::BowitROSInteface():Node("bowit")
     double predTime = this->get_parameter("predTime").get_parameter_value().get<double>();
     double xi = this->get_parameter("xi").get_parameter_value().get<double>();
     double yi = this->get_parameter("yi").get_parameter_value().get<double>();
-
-
-    
+       
     // initialize robot 
     auto fieldMap = std::make_shared<MetricMap>(inputCoordFile, inputDataFile);
     const int state_dim = 5;
@@ -33,6 +31,10 @@ BowitROSInteface::BowitROSInteface():Node("bowit")
     int duration_ms = 1000 * dt; 
     timer_ = this->create_wall_timer(std::chrono::milliseconds(duration_ms), 
         std::bind(&BowitROSInteface::timer_callback, this));
+
+    msePub_ = this->create_publisher<std_msgs::msg::Float64>("/bowit_mse/robot" + std::to_string(robotID_), 10);
+    mse_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000), 
+        std::bind(&BowitROSInteface::mse_timer_callback, this));
 
     publisher_ = this->create_publisher<nav_msgs::msg::Odometry>("/state", 10);
 
@@ -46,6 +48,20 @@ BowitROSInteface::BowitROSInteface():Node("bowit")
     );
     start_time_ = std::chrono::high_resolution_clock::now();
     RCLCPP_INFO(get_logger(), " initiated for robot %d", robotID_);
+}
+
+void BowitROSInteface::mse_timer_callback()
+{
+         // Use std::async to launch a task asynchronously
+    std::future<void> result = std::async(std::launch::async, [&]() {
+        
+        std_msgs::msg::Float64 msg; 
+        msg.data = robot_->loss(); 
+        msePub_->publish(msg);
+        
+    });
+
+    result.wait();
 }
 
 int BowitROSInteface::getRobotID() const 
