@@ -1,0 +1,16 @@
+version: '2.3'
+services:
+  bowit_ws:
+    build: . 
+    container_name: humble_bowit_ws
+    privileged: true
+    runtime: nvidia
+    volumes:
+      - ".:/home/airlab/bowit_ws"
+      - "$HOME/.Xauthority:/root/.Xauthority:rw"
+      - "/tmp/.X11-unix:/tmp/.X11-unix:rw"
+    environment:
+      - "DISPLAY=$DISPLAY"
+      - "QT_X11_NO_MITSHM=1"
+    network_mode: host 
+    command: /bin/sh -c "while sleep 1000; do :; done"

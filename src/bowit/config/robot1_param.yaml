@@ -1,0 +1,7 @@
+coord: "data/coords.csv"
+data: "data/temp.csv"
+dt: 0.20
+predTime : 3.0
+robotID: 1
+xi: 33.65856
+yi: 31.992462
