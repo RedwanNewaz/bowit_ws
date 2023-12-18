@@ -13,6 +13,15 @@
 #include <mutex> 
 
 
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/visualization/cloud_viewer.h>
+#include <opencv2/opencv.hpp>
+
+
+
 static std::mutex vmu; 
 
 class BowitViz: public rclcpp::Node
@@ -28,6 +37,7 @@ private:
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr state_sub_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_state_, pub_frontier_, pub_trajectory_;
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr occPub_;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pclPub_;
     nav_msgs::msg::OccupancyGrid occGridMsg_;
     std::unordered_map<std::string, geometry_msgs::msg::Pose> otherRobots_;
     std::unordered_map<std::string, geometry_msgs::msg::Twist> otherRobotsVel_;
@@ -37,7 +47,7 @@ protected:
     /// @brief Given a coordinate, update the occupancy grid 
     /// @param x x coord
     /// @param y y coord 
-    void updateGridMap(double x, double y);
+    bool updateGridMap(double x, double y);
     /// @brief compute pose to state vector (x, y, theta)
     /// @param pose 
     /// @return state vector (x, y, theta)
@@ -46,7 +56,7 @@ protected:
     /// @brief  given current state of the robot update occupancy grid 
     /// @param self robot state vector (x, y, theta)
     /// @param points (rviz points)
-    void update_frontier(const std::vector<double>& self, std::vector<geometry_msgs::msg::Point>& points);
+    std::vector<std::vector<double>> update_frontier(const std::vector<double>& self, std::vector<geometry_msgs::msg::Point>& points);
 
     /// @brief for a given distance range,  find a neighbor
     /// @param curr_frame 
@@ -60,6 +70,8 @@ protected:
     bool check_collision(const std::string& curr_frame);
 
     void compute_trajectory(nav_msgs::msg::Odometry::SharedPtr msg);
+
+    void scalarToHeatmapColor(double scalar, cv::Vec3b& rgbColor);
     
 };
 

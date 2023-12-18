@@ -14,15 +14,22 @@ find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 
+
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 find_package(limbo REQUIRED)
 find_package(FCL REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(PCL REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(OpenCV REQUIRED)
 
 include_directories(
     ${limbo_INCLUDE_DIRS}
     ${fcl_INCLUDE_DIRS}
     ${Eigen3_INCLUDE_DIRS}
+    ${PCL_INCLUDE_DIRS}
+    ${PCL_CONVERSIONS_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
 )
 
 # bowit library 
@@ -62,7 +69,10 @@ src/viz_node.cpp
 src/viz_interface/bowit_viz.cpp
 ${LIBBOW_SRC_FILE} 
 )
-target_link_libraries(bowit_viz -pthread ${fcl_LIBRARIES})
+target_link_libraries(bowit_viz -pthread 
+${PCL_LIBRARIES}
+${OpenCV_LIBS}
+${fcl_LIBRARIES})
 ament_target_dependencies(
   bowit_viz
   "rclcpp"
@@ -70,6 +80,7 @@ ament_target_dependencies(
   "geometry_msgs"
   "nav_msgs"
   "visualization_msgs"
+  "pcl_conversions"
 )
 
 install(TARGETS bowit_node

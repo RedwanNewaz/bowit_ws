@@ -16,6 +16,7 @@ BowitViz::BowitViz():Node("bowitViz")
     pub_state_ = this->create_publisher<visualization_msgs::msg::Marker>("/bowit_robots", 10);
     pub_frontier_ = this->create_publisher<visualization_msgs::msg::Marker>("/bowit_frontiers", 10);
     pub_trajectory_ = this->create_publisher<visualization_msgs::msg::Marker>("/bowit_trajectories", 10);
+    pclPub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/bowit_local_sensing", 10);
 
     occPub_= this->create_publisher<nav_msgs::msg::OccupancyGrid>("/map", 10);
     
@@ -38,15 +39,22 @@ BowitViz::BowitViz():Node("bowitViz")
     mmodel_ = std::make_shared<MotionModel>(state_dim, dt, predTime);
     collisionChecker_ = std::make_shared<CollisionChecker>(std::vector<double>{0.5,0.5,0.1});
 
+   
+
     
 }
-void BowitViz::updateGridMap(double x, double y)
+bool BowitViz::updateGridMap(double x, double y)
 {
     int row = y / resolution_;
     int column = x / resolution_;
     int index =  row * width_ + column;
     if(row < height_ && column < width_ && index < occGridMsg_.data.size())
+    {
         occGridMsg_.data[index] = exploredPixel;
+        return true; 
+    }
+
+    return false; 
 }
 
 std::vector<double> BowitViz::computeState(const geometry_msgs::msg::Pose& pose) const 
@@ -60,7 +68,7 @@ std::vector<double> BowitViz::computeState(const geometry_msgs::msg::Pose& pose)
     return std::vector<double>{x, y, yaw};
 }
 
-void BowitViz::update_frontier(const std::vector<double>& self, std::vector<geometry_msgs::msg::Point>& points)
+std::vector<std::vector<double>> BowitViz::update_frontier(const std::vector<double>& self, std::vector<geometry_msgs::msg::Point>& points)
 {     
 
     // identify frontier for visualization 
@@ -79,6 +87,7 @@ void BowitViz::update_frontier(const std::vector<double>& self, std::vector<geom
     // update occupancy grid 
     double theta = self[2] - 0.785;
     double dtheta = 0.0174533; // 1 deg increment 
+    std::vector<std::vector<double>> cloud; 
     while (theta < self[2] + 0.785) 
     {
         // double r = std::min(1.0, std::max(1.0/ cos(theta), 1.0/ sin(theta)));
@@ -86,11 +95,17 @@ void BowitViz::update_frontier(const std::vector<double>& self, std::vector<geom
         {
             double x = self[0] + dr * cos(theta); 
             double y = self[1] + dr * sin(theta);
-            updateGridMap(x, y);
+            // check if x and y are valids 
+            if(updateGridMap(x, y))
+            {
+                cloud.push_back({x, y, -0.001});
+            }
         }
 
         theta += dtheta; 
     }
+
+    return cloud;
 }
 
 
@@ -138,7 +153,29 @@ void BowitViz::state_callback(nav_msgs::msg::Odometry::SharedPtr msg)
     // update occupancy grid 
     auto robotState = computeState(vizMsg.pose);
     std::vector<geometry_msgs::msg::Point> points;
-    update_frontier(robotState, points);
+    auto cloudVec = update_frontier(robotState, points);
+    cv::Vec3b rgbColor;
+    scalarToHeatmapColor(msg->pose.pose.position.z, rgbColor);
+
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    auto cp = msg->pose.pose.position;
+    for(const auto& pc: cloudVec)
+    {
+        pcl::PointXYZRGB point;
+        point.x = pc[0];
+        point.y = pc[1];
+        point.z = pc[2];
+        point.r = rgbColor(0);
+        point.g = rgbColor(1);
+        point.b = rgbColor(2);
+        cloud->points.push_back(point);
+    }
+    
+    // Convert PCL point cloud to ROS PointCloud2
+    sensor_msgs::msg::PointCloud2 rosCloud;
+    pcl::toROSMsg(*cloud, rosCloud);
+    rosCloud.header = msg->header; 
+    pclPub_->publish(rosCloud);
 
     // check communication 
     bool comm = check_comm_range(msg->child_frame_id, 2.0);
@@ -242,6 +279,22 @@ void BowitViz::compute_trajectory(nav_msgs::msg::Odometry::SharedPtr msg)
         vizMsg.points.emplace_back(p);
     }
     pub_trajectory_->publish(vizMsg);
+}
+
+
+void BowitViz::scalarToHeatmapColor(double scalar, cv::Vec3b& rgbColor) 
+{
+    // normalize scalar value 
+    const double MAX_VAL = 25.9342;
+    const double MIN_VAL = 25.764; 
+    scalar -= MIN_VAL;
+    scalar /= (MAX_VAL - MIN_VAL);
+    // Define a colormap (you can choose any colormap from OpenCV)
+    cv::Mat colormap;
+    cv::applyColorMap(cv::Mat(1, 1, CV_8UC1, cv::Scalar(scalar * 255)), colormap, cv::COLORMAP_VIRIDIS);
+
+    // Extract RGB color from the colormap
+    rgbColor = colormap.at<cv::Vec3b>(0, 0);
 }
 
 
