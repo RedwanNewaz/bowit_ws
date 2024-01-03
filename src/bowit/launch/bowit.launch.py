@@ -44,14 +44,14 @@ def generate_launch_description():
         )
     ld.add_action(viz)
     
-    # param_path = os.path.join(current_pkg_dir, 'config', 'bowit.rviz')
-    # rviz = Node(
-    #     package='rviz2',
-    #     executable='rviz2',
-    #     name='bowit_rviz2',
-    #     arguments=['-d', param_path]
-    # )
-    # ld.add_action(rviz)
+    param_path = os.path.join(current_pkg_dir, 'config', 'bowit.rviz')
+    rviz = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='bowit_rviz2',
+        arguments=['-d', param_path]
+    )
+    ld.add_action(rviz)
 
     return ld
 

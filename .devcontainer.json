@@ -1,0 +1,10 @@
+{
+    "name": "bowit_ws",
+    "service": "bowit_ws",
+    "dockerComposeFile": "./docker-compose.yml",
+    "extensions":[
+        "ms-iot.vscode-ros"
+    ],
+    "workspaceFolder": "/home/airlab/bowit_ws",
+    "shutdownAction": "stopCompose"
+}
